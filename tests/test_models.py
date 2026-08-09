@@ -25,14 +25,25 @@ def test_check_status_contains_exact_public_values() -> None:
     ]
 
 
-@pytest.mark.parametrize("score_impact", [0, -5])
-def test_check_result_accepts_valid_score_impacts(score_impact: int) -> None:
-    """A check may have no deduction or a negative deduction."""
+@pytest.mark.parametrize(
+    ("status", "score_impact"),
+    [
+        (CheckStatus.PASS, 0),
+        (CheckStatus.WARN, -5),
+        (CheckStatus.FAIL, -10),
+        (CheckStatus.SKIP, 0),
+    ],
+)
+def test_check_result_accepts_valid_score_impacts(
+    status: CheckStatus,
+    score_impact: int,
+) -> None:
+    """Each status should accept score impacts consistent with its meaning."""
     result = CheckResult(
         check_id="documentation.readme",
         title="README",
-        status=CheckStatus.PASS,
-        description="README.md is present.",
+        status=status,
+        description="README check completed.",
         score_impact=score_impact,
     )
 
@@ -52,6 +63,26 @@ def test_check_result_rejects_positive_score_impact() -> None:
             status=CheckStatus.PASS,
             description="README.md is present.",
             score_impact=5,
+        )
+
+@pytest.mark.parametrize(
+    "status",
+    [CheckStatus.PASS, CheckStatus.SKIP],
+)
+def test_non_penalty_statuses_reject_negative_score_impact(
+    status: CheckStatus,
+) -> None:
+    """PASS and SKIP results must not reduce the health score."""
+    with pytest.raises(
+        ValueError,
+        match=f"{status.value} results must have zero score impact",
+    ):
+        CheckResult(
+            check_id="documentation.readme",
+            title="README",
+            status=status,
+            description="README check completed.",
+            score_impact=-5,
         )
 
 

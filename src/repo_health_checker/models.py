@@ -31,6 +31,14 @@ class CheckResult:
         if self.score_impact > 0:
             raise ValueError("score_impact must be zero or a negative deduction")
 
+        if (
+            self.status in {CheckStatus.PASS, CheckStatus.SKIP}
+            and self.score_impact != 0
+        ):
+            raise ValueError(
+                f"{self.status.value} results must have zero score impact"
+            )
+
 
 @dataclass(frozen=True, slots=True)
 class GitInfo:
