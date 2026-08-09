@@ -3,7 +3,9 @@
 import pytest
 
 from repo_health_checker.errors import (
+    GitCommandNotAllowedError,
     GitExecutionError,
+    GitNotFoundError,
     GitTimeoutError,
     RepoHealthCheckerError,
     ValidationError,
@@ -116,4 +118,6 @@ def test_expected_errors_share_application_base_exception() -> None:
     """Expected failures should be catchable through one base type."""
     assert issubclass(ValidationError, RepoHealthCheckerError)
     assert issubclass(GitExecutionError, RepoHealthCheckerError)
+    assert issubclass(GitNotFoundError, GitExecutionError)
+    assert issubclass(GitCommandNotAllowedError, GitExecutionError)
     assert issubclass(GitTimeoutError, GitExecutionError)
