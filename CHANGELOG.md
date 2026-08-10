@@ -5,6 +5,8 @@ Semantic Versioning.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-10
+
 ### Added
 
 - Read-only local Git repository validation and state collection.

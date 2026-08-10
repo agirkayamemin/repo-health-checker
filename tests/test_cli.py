@@ -1,6 +1,9 @@
 """Tests for the command-line interface."""
 
 import io
+import json
+import shutil
+import subprocess
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -119,3 +122,60 @@ def test_main_converts_mib_to_bytes(monkeypatch) -> None:
     )
 
     assert captured == {"path": Path("nested"), "limit": 12 * 1024 * 1024}
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="Git is not installed")
+def test_main_analyzes_temporary_repository_as_json(tmp_path: Path) -> None:
+    """The real pipeline should emit JSON and allow warning-only repositories."""
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+    subprocess.run(
+        [git_executable, "init", "--quiet", str(tmp_path)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    for relative_path in (
+        "README.md",
+        "LICENSE",
+        ".gitignore",
+        "pyproject.toml",
+        "CONTRIBUTING.md",
+        "tests/test_app.py",
+        ".github/workflows/tests.yml",
+    ):
+        path = tmp_path / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("test fixture", encoding="utf-8")
+    nested = tmp_path / "src"
+    nested.mkdir()
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    exit_code = cli.main(
+        ["check", str(nested), "--format", "json"],
+        stdout=stdout,
+        stderr=stderr,
+    )
+    payload = json.loads(stdout.getvalue())
+
+    assert exit_code == cli.EXIT_OK
+    assert stderr.getvalue() == ""
+    assert Path(payload["repository_root"]) == tmp_path.resolve()
+    assert payload["summary"]["fail"] == 0
+
+
+def test_main_returns_two_for_real_non_repository(tmp_path: Path) -> None:
+    """A real non-repository directory should map to validation exit code 2."""
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    exit_code = cli.main(
+        ["check", str(tmp_path)],
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == cli.EXIT_USAGE_ERROR
+    assert stdout.getvalue() == ""
+    assert stderr.getvalue().startswith("error: ")
