@@ -2,7 +2,7 @@
 
 from pathlib import PurePosixPath
 
-from repo_health_checker.models import CheckResult, CheckStatus
+from repo_health_checker.models import CheckResult, CheckStatus, GitInfo
 from repo_health_checker.scanner import RepositoryFiles
 
 
@@ -152,5 +152,55 @@ def run_structure_checks(files: RepositoryFiles) -> tuple[CheckResult, ...]:
             success="At least one GitHub Actions workflow is present.",
             failure="No GitHub Actions workflow was found.",
             recommendation="Add a workflow under .github/workflows/.",
+        ),
+    )
+
+
+def run_git_checks(git: GitInfo) -> tuple[CheckResult, ...]:
+    """Evaluate portable Git repository state signals."""
+    return (
+        _result(
+            "git.head",
+            "HEAD commit",
+            git.head_exists,
+            failure_status=CheckStatus.WARN,
+            deduction=5,
+            success="The repository has at least one commit.",
+            failure="The repository does not have a HEAD commit.",
+            recommendation="Create an initial commit when the project is ready.",
+        ),
+        _result(
+            "git.branch",
+            "Active branch",
+            git.branch is not None,
+            failure_status=CheckStatus.WARN,
+            deduction=3,
+            success=f"The active branch is {git.branch}.",
+            failure="No active branch name is available.",
+            recommendation="Use a named branch for normal development work.",
+        ),
+        _result(
+            "git.remotes",
+            "Git remotes",
+            bool(git.remotes),
+            failure_status=CheckStatus.WARN,
+            deduction=5,
+            success="At least one Git remote is configured.",
+            failure="No Git remote is configured.",
+            recommendation="Add a trusted remote when collaboration or backup is needed.",
+        ),
+        _result(
+            "git.clean",
+            "Working tree",
+            git.is_clean,
+            failure_status=CheckStatus.WARN,
+            deduction=5,
+            success="The working tree is clean.",
+            failure=(
+                "The working tree has "
+                f"{git.staged_changes} staged, {git.unstaged_changes} unstaged, "
+                f"and {git.untracked_files} untracked paths."
+            ),
+            recommendation="Review and intentionally commit, ignore, or discard local changes.",
         ),
     )
