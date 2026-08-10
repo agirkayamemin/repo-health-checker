@@ -26,7 +26,7 @@ def classify_suspicious_path(path_text: str) -> str | None:
     name = path.name.lower()
     suffix = path.suffix.lower()
 
-    for part in lower_parts[:-1]:
+    for part in lower_parts:
         if part in _RISK_DIRECTORIES:
             return _RISK_DIRECTORIES[part]
     if name == ".env" or (
@@ -72,9 +72,17 @@ def run_hygiene_checks(
         for path in files.tracked
         if (risk := classify_suspicious_path(path)) is not None
     )
+    opaque_untracked = (
+        path
+        for path in files.opaque_directories
+        if not any(
+            tracked == path or tracked.startswith(f"{path}/")
+            for tracked in files.tracked
+        )
+    )
     untracked_findings = sorted(
         (path, risk)
-        for path in files.untracked
+        for path in (*files.untracked, *opaque_untracked)
         if (risk := classify_suspicious_path(path)) is not None
     )
 
