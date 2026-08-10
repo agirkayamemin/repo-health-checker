@@ -16,6 +16,17 @@ class RepositoryFiles:
     untracked: tuple[str, ...]
     existing: tuple[str, ...]
     directories: tuple[str, ...] = ()
+    opaque_directories: tuple[str, ...] = ()
+
+
+_OPAQUE_DIRECTORY_NAMES = {
+    ".idea",
+    ".venv",
+    ".vscode",
+    "__pycache__",
+    "env",
+    "venv",
+}
 
 
 def _parse_tracked_paths(output: str) -> set[str]:
@@ -42,17 +53,24 @@ def scan_repository_files(
     tracked = _parse_tracked_paths(tracked_result.stdout)
     existing: set[str] = set()
     directories: set[str] = set()
+    opaque_directories: set[str] = set()
 
     for current_root, directory_names, file_names in os.walk(
         repository_root,
         followlinks=False,
     ):
         current_path = Path(current_root)
-        directory_names[:] = [
-            name
-            for name in directory_names
-            if name != ".git" and not (current_path / name).is_symlink()
-        ]
+        traversable_directories: list[str] = []
+        for name in directory_names:
+            directory_path = current_path / name
+            if name == ".git" or directory_path.is_symlink():
+                continue
+            relative_directory = directory_path.relative_to(repository_root).as_posix()
+            if name.lower() in _OPAQUE_DIRECTORY_NAMES:
+                opaque_directories.add(relative_directory)
+                continue
+            traversable_directories.append(name)
+        directory_names[:] = traversable_directories
         directories.update(
             (current_path / name).relative_to(repository_root).as_posix()
             for name in directory_names
@@ -66,4 +84,5 @@ def scan_repository_files(
         untracked=tuple(sorted(existing - tracked)),
         existing=tuple(sorted(existing)),
         directories=tuple(sorted(directories)),
+        opaque_directories=tuple(sorted(opaque_directories)),
     )

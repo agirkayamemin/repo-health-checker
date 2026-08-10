@@ -64,6 +64,17 @@ def test_only_untracked_suspicious_file_warns(tmp_path: Path) -> None:
     assert results["hygiene.untracked_suspicious"].status is CheckStatus.WARN
 
 
+def test_untracked_opaque_directory_is_one_warning(tmp_path: Path) -> None:
+    """A local virtual environment should not require traversing its contents."""
+    files = RepositoryFiles((), (), (), opaque_directories=(".venv",))
+
+    results = {result.check_id: result for result in run_hygiene_checks(tmp_path, files)}
+
+    finding = results["hygiene.untracked_suspicious"]
+    assert finding.status is CheckStatus.WARN
+    assert finding.description == "Untracked suspicious paths: .venv (virtual environment)"
+
+
 def test_large_check_uses_only_tracked_regular_files(tmp_path: Path) -> None:
     """Untracked large files and tracked symlinks should not be followed."""
     tracked = tmp_path / "tracked.bin"

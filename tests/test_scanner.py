@@ -29,6 +29,7 @@ def test_scan_distinguishes_tracked_and_untracked_files(tmp_path: Path) -> None:
     assert files.untracked == ("notes.txt",)
     assert files.existing == ("README.md", "notes.txt")
     assert files.directories == ()
+    assert files.opaque_directories == ()
 
 
 def test_scan_does_not_follow_symlinked_directory(tmp_path: Path) -> None:
@@ -50,6 +51,20 @@ def test_scan_does_not_follow_symlinked_directory(tmp_path: Path) -> None:
     assert "target/secret.env" in files.existing
     assert "linked" not in files.directories
     assert "target" in files.directories
+
+
+def test_scan_records_opaque_directory_without_traversing(tmp_path: Path) -> None:
+    """Generated directory trees should become one bounded inventory item."""
+    virtual_environment = tmp_path / ".venv"
+    virtual_environment.mkdir()
+    (virtual_environment / "secret.env").write_text("not read", encoding="utf-8")
+    client = Mock()
+    client.run.return_value = GitCommandResult("", "", 0)
+
+    files = scan_repository_files(tmp_path, git_client=client)
+
+    assert files.opaque_directories == (".venv",)
+    assert ".venv/secret.env" not in files.existing
 
 
 @pytest.mark.parametrize("output", ["../outside.txt\0", "/absolute.txt\0"])
