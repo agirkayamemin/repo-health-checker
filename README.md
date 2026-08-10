@@ -5,9 +5,7 @@ test structure, CI setup, Git state, and repository hygiene of a local Git
 working tree. It produces a deterministic score and never runs the analyzed
 project's code.
 
-> Development status: the v1 behavior is implemented and undergoing release
-> verification. The current package version remains `0.1.0.dev0` until the
-> final v1.0.0 release commit.
+Version 1.0.0 provides the complete local, read-only analysis workflow.
 
 ## Features
 
@@ -68,7 +66,7 @@ stderr.
 ```json
 {
   "schema_version": "1.0",
-  "application_version": "0.1.0.dev0",
+  "application_version": "1.0.0",
   "score": 90,
   "summary": {"pass": 12, "warn": 2, "fail": 0, "skip": 0, "total": 14}
 }

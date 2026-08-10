@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from repo_health_checker import __version__
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,3 +32,8 @@ def test_workflow_covers_supported_python_and_windows() -> None:
     assert "ubuntu-latest" in workflow
     assert "windows-latest" in workflow
     assert "python -m pytest" in workflow
+
+
+def test_release_version_is_v1() -> None:
+    """Package metadata should expose the intended release version."""
+    assert __version__ == "1.0.0"

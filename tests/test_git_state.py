@@ -1,12 +1,14 @@
 """Tests for Git repository state collection."""
 
+import shutil
+import subprocess
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
 from repo_health_checker.errors import GitExecutionError, GitTimeoutError
-from repo_health_checker.git_client import GitCommandResult
+from repo_health_checker.git_client import GitClient, GitCommandResult
 from repo_health_checker.git_state import collect_git_info, parse_porcelain_status
 
 
@@ -111,3 +113,47 @@ def test_collect_git_info_propagates_optional_command_timeout(
 
     with pytest.raises(GitTimeoutError, match="timed out"):
         collect_git_info(tmp_path, git_client=client)
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="Git is not installed")
+def test_collect_git_info_from_temporary_dirty_repository(tmp_path: Path) -> None:
+    """Real Git state should distinguish staged, unstaged, and untracked paths."""
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            [git_executable, *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    git("init", "--quiet", "-b", "main")
+    git("config", "user.name", "Test User")
+    git("config", "user.email", "test@example.invalid")
+    tracked = tmp_path / "tracked.txt"
+    tracked.write_text("initial", encoding="utf-8")
+    git("add", "tracked.txt")
+    git("commit", "--quiet", "-m", "initial")
+    tracked.write_text("staged", encoding="utf-8")
+    git("add", "tracked.txt")
+    tracked.write_text("unstaged after staging", encoding="utf-8")
+    (tmp_path / "new.txt").write_text("untracked", encoding="utf-8")
+    git("remote", "add", "origin", "https://example.invalid/repo.git")
+
+    info = collect_git_info(
+        tmp_path,
+        git_client=GitClient(git_executable=git_executable),
+    )
+
+    assert info.branch == "main"
+    assert info.head_exists is True
+    assert info.is_clean is False
+    assert (info.staged_changes, info.unstaged_changes, info.untracked_files) == (
+        1,
+        1,
+        1,
+    )
+    assert info.remotes == ("origin",)
