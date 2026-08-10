@@ -1,0 +1,17 @@
+name: Bug report
+description: Report reproducible incorrect behavior.
+title: "bug: "
+labels: ["type: bug"]
+body:
+  - type: textarea
+    attributes:
+      label: Problem
+      description: Describe the observed and expected behavior without secrets.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Reproduction
+      description: Provide a minimal safe reproduction and relevant versions.
+    validations:
+      required: true
